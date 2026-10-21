@@ -37,7 +37,7 @@
       .replace(/\(\s*\)/g, '（<i class="blank"></i>）');
     return '<div class="qstem">' + s + '</div>';
   }
-  function optLetter(k) { return '<span class="ok">' + k + '</span>'; }
+  function optLetter(k) { return '<span class="ol">' + k + '</span>'; }
 
   function optionsHtml(q, picked, opts) {
     opts = opts || {};
@@ -97,13 +97,28 @@
     return '<div class="bar"><i style="width:' + Math.min(100, Math.max(0, pct * 100)).toFixed(1) + '%"></i></div>';
   }
 
+  /* 线性图标（内联 SVG，无外部依赖） */
+  var ICON_PATHS = {
+    target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.6"/>',
+    pulse: '<polyline points="22 12 17.5 12 15 21 9 3 6.5 12 2 12"/>',
+    alert: '<circle cx="12" cy="12" r="9"/><line x1="12" y1="7.5" x2="12" y2="12.5"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+    flame: '<path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>',
+    layers: '<path d="M21.2 15.9A10 10 0 1 1 8 2.8"/><path d="M22 12A10 10 0 0 0 12 2v10z"/>',
+    chart: '<path d="M3 3v18h18"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>'
+  };
+  function icon(name) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+      'stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (ICON_PATHS[name] || '') + '</svg>';
+  }
+
   function empty(title, desc, action) {
-    return '<div class="empty"><div class="empty-ico">◍</div><h3>' + esc(title) + '</h3>' +
+    return '<div class="empty"><div class="empty-ico">' + icon('layers') + '</div><h3>' + esc(title) + '</h3>' +
       '<p>' + esc(desc || '') + '</p>' + (action || '') + '</div>';
   }
 
-  function statCard(label, value, sub, tone) {
+  function statCard(label, value, sub, tone, ico) {
     return '<div class="stat-card ' + (tone || '') + '">' +
+      (ico ? '<span class="stat-ico">' + icon(ico) + '</span>' : '') +
       '<div class="stat-label">' + esc(label) + '</div>' +
       '<div class="stat-value">' + value + '</div>' +
       (sub ? '<div class="stat-sub">' + sub + '</div>' : '') + '</div>';
@@ -142,18 +157,22 @@
         '</div>' +
       '</div>' +
       '<div class="hero-ring">' +
-        '<svg viewBox="0 0 120 120" class="ring"><circle cx="60" cy="60" r="52" class="ring-bg"/>' +
-        '<circle cx="60" cy="60" r="52" class="ring-fg" style="stroke-dasharray:' + (2 * Math.PI * 52).toFixed(1) +
-          ';stroke-dashoffset:' + (2 * Math.PI * 52 * (1 - st.coverage)).toFixed(1) + '"/></svg>' +
+        '<svg viewBox="0 0 120 120" class="ring">' +
+          '<defs><linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">' +
+            '<stop offset="0%" stop-color="#6366f1"/><stop offset="55%" stop-color="#8b5cf6"/><stop offset="100%" stop-color="#22d3ee"/>' +
+          '</linearGradient></defs>' +
+          '<circle cx="60" cy="60" r="52" class="ring-bg"/>' +
+          '<circle cx="60" cy="60" r="52" class="ring-fg" style="stroke-dasharray:' + (2 * Math.PI * 52).toFixed(1) +
+            ';stroke-dashoffset:' + (2 * Math.PI * 52 * (1 - st.coverage)).toFixed(1) + '"/></svg>' +
         '<div class="ring-label"><b>' + Math.round(st.coverage * 100) + '%</b><span>已练习</span></div>' +
       '</div>' +
     '</section>';
 
     html += '<section class="stat-row">' +
-      statCard('已练习题目', fmtCount(st.answered) + '<span class="unit">题</span>', '覆盖 ' + pct(st.coverage)) +
-      statCard('累计答题', fmtCount(st.attempts) + '<span class="unit">次</span>', '正确率 ' + (st.attempts ? pct(st.accuracy) : '—'), 'tone-blue') +
-      statCard('错题本', fmtCount(st.wrong) + '<span class="unit">题</span>', '答对两次自动移出', 'tone-red') +
-      statCard('连续打卡', fmtCount(store.streak()) + '<span class="unit">天</span>', '收藏 ' + fmtCount(st.fav) + ' 题', 'tone-amber') +
+      statCard('已练习题目', fmtCount(st.answered) + '<span class="unit">题</span>', '覆盖 ' + pct(st.coverage), '', 'target') +
+      statCard('累计答题', fmtCount(st.attempts) + '<span class="unit">次</span>', '正确率 ' + (st.attempts ? pct(st.accuracy) : '—'), 'tone-blue', 'pulse') +
+      statCard('错题本', fmtCount(st.wrong) + '<span class="unit">题</span>', '答对两次自动移出', 'tone-red', 'alert') +
+      statCard('连续打卡', fmtCount(store.streak()) + '<span class="unit">天</span>', '收藏 ' + fmtCount(st.fav) + ' 题', 'tone-amber', 'flame') +
     '</section>';
 
     html += '<div class="grid-2">';

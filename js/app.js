@@ -45,7 +45,7 @@
       try { r.mount(view); } catch (err) { console.error(err); }
     }
     highlightNav(name);
-    document.title = ROUTES[name] + ' · 题库刷题系统';
+    document.title = ROUTES[name] + ' · 智题';
     window.scrollTo({ top: 0, behavior: 'auto' });
   };
 
@@ -89,6 +89,26 @@
       if (!App.practiceHotkey) return;
       App.practiceHotkey(e, document.getElementById('view'));
     });
+
+    // 卡片鼠标聚光：把指针位置写进 CSS 变量
+    var reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (!reduce && window.matchMedia && window.matchMedia('(hover: hover)').matches) {
+      var pending = false, lastEvt = null;
+      document.addEventListener('pointermove', function (e) {
+        lastEvt = e;
+        if (pending) return;
+        pending = true;
+        requestAnimationFrame(function () {
+          pending = false;
+          var t = lastEvt.target;
+          var el = t && t.closest ? t.closest('.card, .stat-card, .hero') : null;
+          if (!el) return;
+          var r = el.getBoundingClientRect();
+          el.style.setProperty('--mx', (lastEvt.clientX - r.left).toFixed(0) + 'px');
+          el.style.setProperty('--my', (lastEvt.clientY - r.top).toFixed(0) + 'px');
+        });
+      }, { passive: true });
+    }
 
     // 练习会话恢复提示
     var saved = store.loadSession();

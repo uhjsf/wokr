@@ -507,10 +507,10 @@
     var html = '<div class="page">' +
       '<div class="page-head"><h1>学习统计</h1><p class="muted">所有数据保存在本机浏览器中</p></div>' +
       '<section class="stat-row">' +
-        ui.statCard('累计答题', fmtCount(st.attempts) + '<span class="unit">次</span>', '正确率 ' + (st.attempts ? pct(st.accuracy) : '—')) +
-        ui.statCard('已练习题目', fmtCount(st.answered) + '<span class="unit">题</span>', '覆盖率 ' + pct(st.coverage), 'tone-blue') +
-        ui.statCard('错题', fmtCount(st.wrong) + '<span class="unit">题</span>', '待消化', 'tone-red') +
-        ui.statCard('连续打卡', fmtCount(store.streak()) + '<span class="unit">天</span>', '收藏 ' + fmtCount(st.fav) + ' 题', 'tone-amber') +
+        ui.statCard('累计答题', fmtCount(st.attempts) + '<span class="unit">次</span>', '正确率 ' + (st.attempts ? pct(st.accuracy) : '—'), '', 'pulse') +
+        ui.statCard('已练习题目', fmtCount(st.answered) + '<span class="unit">题</span>', '覆盖率 ' + pct(st.coverage), 'tone-blue', 'target') +
+        ui.statCard('错题', fmtCount(st.wrong) + '<span class="unit">题</span>', '待消化', 'tone-red', 'alert') +
+        ui.statCard('连续打卡', fmtCount(store.streak()) + '<span class="unit">天</span>', '收藏 ' + fmtCount(st.fav) + ' 题', 'tone-amber', 'flame') +
       '</section>' +
 
       '<div class="card"><div class="card-head"><h2>近 30 天</h2><span class="muted">柱高代表当天答题量</span></div>' +
@@ -589,7 +589,7 @@
 
       '<div class="card about">' +
         '<div class="card-head"><h2>关于</h2></div>' +
-        '<p>题库刷题系统 · 纯前端单页应用，双击 <code>index.html</code> 即可使用。</p>' +
+        '<p>智题 · 智能题库练习系统 · 纯前端单页应用，双击 <code>index.html</code> 即可使用。</p>' +
         '<p class="muted small">题库来源：' + esc((store.meta && store.meta.source) || '内置题库') + '<br>' +
         '题目数：' + fmtCount(store.questions.length) + ' · 章节：' + store.chapters.length +
         ' · 浏览器存储：' + (U.Storage.available ? '可用' : '不可用（刷新后会丢失进度）') + '</p>' +
