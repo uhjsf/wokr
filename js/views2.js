@@ -171,6 +171,7 @@
       size: 'md',
       html: html,
       footer: '<button class="btn btn-ghost" data-fav>' + (store.isFav(id) ? '★ 取消收藏' : '☆ 收藏') + '</button>' +
+              '<button class="btn ai-btn" data-ai-ask><span class="ai-spark">✦</span>问 AI</button>' +
               '<button class="btn btn-primary" data-practice>单题练习</button>',
       onMount: function (wrap, close) {
         wrap.querySelector('[data-fav]').addEventListener('click', function () {
@@ -178,6 +179,10 @@
           U.toast(added ? '已收藏' : '已取消收藏');
           App.render();
           close();
+        });
+        wrap.querySelector('[data-ai-ask]').addEventListener('click', function () {
+          close();
+          if (App.ai) App.ai.ask(q);
         });
         wrap.querySelector('[data-practice]').addEventListener('click', function () {
           close();
@@ -587,6 +592,7 @@
           '<button class="btn btn-danger-soft" data-act="reset-bank">恢复</button></div>' +
       '</div>' +
 
+      aiConfigCardHtml() +
       '<div class="card about">' +
         '<div class="card-head"><h2>关于</h2></div>' +
         '<p>智题 · 智能题库练习系统 · 纯前端单页应用，双击 <code>index.html</code> 即可使用。</p>' +
@@ -638,7 +644,104 @@
             }
           }
         });
+
+        mountAiConfig(root);
       }
     };
   };
+
+  /* ================= AI 解答设置 ================= */
+  function aiConfigCardHtml() {
+    var ai = App.ai;
+    var cfg = ai ? ai.cfg : { provider: 'deepseek', baseUrl: '', model: '', apiKey: '' };
+    var presets = (ai ? ai.presets : []).map(function (p) {
+      return '<option value="' + p.id + '" ' + (cfg.provider === p.id ? 'selected' : '') + '>' + esc(p.name) + '</option>';
+    }).join('');
+    var on = ai && ai.configured();
+    return '<div class="card">' +
+      '<div class="card-head"><h2>AI 解答</h2>' +
+        '<span class="tag ' + (on ? 'tag-amber' : '') + '">' + (on ? '已配置' : '未配置') + '</span></div>' +
+      '<p class="muted small" style="margin-bottom:14px">不会的题可以直接点「问 AI」，让大模型给出答案和解析。' +
+        '需要你自己的 API Key，Key 只存在本机浏览器，请求从浏览器直接发往服务商。</p>' +
+      '<div class="ai-config">' +
+        '<label class="af"><span>服务商</span><select class="input" data-ai-provider>' + presets + '</select></label>' +
+        '<label class="af"><span>接口地址</span><input class="input" data-ai-base value="' + esc(cfg.baseUrl) + '" placeholder="https://api.deepseek.com"></label>' +
+        '<label class="af"><span>模型</span><input class="input" data-ai-model value="' + esc(cfg.model) + '" placeholder="deepseek-chat"></label>' +
+        '<label class="af"><span>API Key</span><input class="input" type="password" data-ai-key value="' + esc(cfg.apiKey) + '" placeholder="sk-…" autocomplete="off"></label>' +
+      '</div>' +
+      '<div class="ai-config-actions">' +
+        '<button class="btn btn-primary" data-ai-save>保存</button>' +
+        '<button class="btn btn-ghost" data-ai-test>测试连接</button>' +
+        '<button class="btn btn-text" data-ai-clear>清除</button>' +
+        '<span class="ai-config-msg muted small"></span>' +
+      '</div>' +
+      '<p class="muted small" style="margin-top:12px">题目内容会发送给所选服务商。<br>' +
+        'DeepSeek / 硅基流动 / Kimi 已验证支持浏览器直接调用；其它服务若报「无法连接」，多半是跨域被拦。</p>' +
+      '</div>';
+  }
+
+  function mountAiConfig(root) {
+    if (!App.ai) return;
+    var msg = root.querySelector('.ai-config-msg');
+
+    root.addEventListener('change', function (e) {
+      var sel = e.target.closest('[data-ai-provider]');
+      if (!sel) return;
+      var p = null;
+      App.ai.presets.forEach(function (x) { if (x.id === sel.value) p = x; });
+      if (!p) return;
+      var base = root.querySelector('[data-ai-base]');
+      var model = root.querySelector('[data-ai-model]');
+      if (base && p.base) base.value = p.base;
+      if (model && p.model) model.value = p.model;
+      if (msg) msg.textContent = '';
+    });
+
+    function values() {
+      return {
+        provider: (root.querySelector('[data-ai-provider]') || {}).value || 'custom',
+        baseUrl: (root.querySelector('[data-ai-base]') || {}).value || '',
+        model: (root.querySelector('[data-ai-model]') || {}).value || '',
+        apiKey: (root.querySelector('[data-ai-key]') || {}).value || ''
+      };
+    }
+
+    root.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-ai-save],[data-ai-test],[data-ai-clear]');
+      if (!b) return;
+
+      if (b.hasAttribute('data-ai-clear')) {
+        App.ai.saveCfg({ provider: 'deepseek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-chat', apiKey: '' });
+        U.toast('已清除 AI 配置');
+        App.render();
+        return;
+      }
+
+      var v = values();
+      if (!v.baseUrl || !v.model) { if (msg) msg.textContent = '请填写接口地址和模型'; return; }
+
+      if (b.hasAttribute('data-ai-save')) {
+        if (!v.apiKey) { if (msg) msg.textContent = '请填写 API Key'; return; }
+        App.ai.saveCfg(v);
+        if (msg) { msg.textContent = '已保存'; msg.className = 'ai-config-msg small ok-text'; }
+        U.toast('AI 配置已保存', 'ok');
+        App.render();
+        return;
+      }
+
+      // 测试连接
+      if (!v.apiKey) { if (msg) msg.textContent = '请先填写 API Key'; return; }
+      b.disabled = true;
+      var old = b.textContent;
+      b.textContent = '测试中…';
+      if (msg) { msg.textContent = ''; msg.className = 'ai-config-msg muted small'; }
+      App.ai.test(v).then(function (txt) {
+        b.disabled = false; b.textContent = old;
+        if (msg) { msg.textContent = '连接正常，模型回复：' + String(txt || '').trim().slice(0, 20); msg.className = 'ai-config-msg small ok-text'; }
+      }).catch(function (err) {
+        b.disabled = false; b.textContent = old;
+        if (msg) { msg.textContent = err && err.status ? ('失败：HTTP ' + err.status + ' ' + (err.message || '')) : ('失败：' + (err.message || '未知错误')); msg.className = 'ai-config-msg small bad-text'; }
+      });
+    });
+  }
 })(window);

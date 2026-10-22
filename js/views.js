@@ -453,6 +453,7 @@
       '<button class="btn btn-ghost" data-act="prev" ' + (s.idx === 0 ? 'disabled' : '') + '>‹ 上一题</button>' +
       '<div class="qfoot-mid">' +
         (q.type === 'multi' && !(st && st.done) ? '<button class="btn btn-primary" data-act="submit">提交答案</button>' : '') +
+        '<button class="btn ai-btn" data-act="ask-ai" title="不会就点这里，让 AI 讲解"><span class="ai-spark">✦</span>问 AI</button>' +
       '</div>' +
       '<button class="btn btn-primary" data-act="next">' + (s.idx === s.pool.length - 1 ? '完成' : '下一题 ›') + '</button>' +
     '</div>';
@@ -549,6 +550,9 @@
           var added = store.toggleFav(qq.id);
           U.toast(added ? '已收藏' : '已取消收藏');
           refreshCard(root);
+          break;
+        case 'ask-ai':
+          if (App.ai) App.ai.ask(currentPracticeQ());
           break;
         case 'submit':
           var q2 = currentPracticeQ();
