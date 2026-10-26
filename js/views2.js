@@ -662,7 +662,8 @@
         '<p class="muted small">题库来源：' + esc((store.meta && store.meta.source) || '内置题库') + '<br>' +
         '题目总数：' + fmtCount(store.questions.length) + ' 道 · 可用 ' + fmtCount(store.validQuestions.length) + ' 道' +
         ' · 科目：' + store.subjects.length + ' 个 · 章节：' + store.chapters.length + ' 个<br>' +
-        '浏览器存储：' + (U.Storage.available ? '可用' : '不可用（刷新后会丢失进度）') + '</p>' +
+        '浏览器存储：' + (U.Storage.available ? '可用' : '不可用（刷新后会丢失进度）') +
+        (window.APP_BUILD ? '<br>版本：' + esc(window.APP_BUILD) : '') + '</p>' +
         excludedNoteHtml() +
         '<p class="muted small">快捷键：<kbd>1</kbd>-<kbd>4</kbd> 选择选项，<kbd>Enter</kbd> 提交 / 下一题，<kbd>←</kbd> <kbd>→</kbd> 切换题目。</p>' +
       '</div>' +

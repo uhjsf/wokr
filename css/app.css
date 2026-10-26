@@ -1509,3 +1509,8 @@ code {
   background: var(--amber);
   animation: micPulse 1.2s ease-in-out infinite;
 }
+.mic-tip {
+  display: block; line-height: 1.7; padding: 9px 13px;
+  border-radius: 11px; background: var(--surface-2);
+  border: 1px dashed var(--line-2);
+}

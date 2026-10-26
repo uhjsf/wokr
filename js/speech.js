@@ -18,6 +18,18 @@
     'aborted': ''
   };
 
+  // iPhone / iPad（含 iPadOS 13+ 伪装成 Mac 的情况）
+  var IS_IOS = (function () {
+    var ua = navigator.userAgent || '';
+    if (/iPhone|iPad|iPod/i.test(ua)) return true;
+    return /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+  })();
+
+  var HINT_OK = '点一下开始说，说完再点一下';
+  var HINT_IOS = 'iPhone / iPad 不支持网页语音，点输入框后用键盘上的 🎤 听写';
+  var HINT_NO = '当前浏览器不支持语音输入，请用 Chrome / Edge';
+  var HINT = !SR && IS_IOS ? HINT_IOS : (!SR ? HINT_NO : HINT_OK);
+
   var S = App.speech = {
     supported: !!SR,
     recording: false,
@@ -25,15 +37,19 @@
   };
 
   S.html = function () {
-    var ok = S.supported;
+    // 浏览器不支持时不摆一个点不动的按钮，直接给一条能用的办法
+    if (!S.supported) {
+      return '<div class="essay-tools">' +
+        '<span class="mic-tip muted small">💡 ' +
+        (IS_IOS
+          ? 'iPhone / iPad 不支持网页语音识别。点进输入框，用键盘上的 🎤 键（系统听写）一样能语音输入。'
+          : '当前浏览器不支持网页语音识别。可以换 Chrome / Edge，或点进输入框用输入法的 🎤 键。') +
+        '</span></div>';
+    }
     return '<div class="essay-tools">' +
-      '<button type="button" class="mic-btn" data-act="essay-mic"' +
-      (ok ? '' : ' disabled') +
-      ' title="' + (ok ? '用嘴说，自动转成文字' : '当前浏览器不支持语音输入') + '">' +
+      '<button type="button" class="mic-btn" data-act="essay-mic" title="用嘴说，自动转成文字">' +
       '<span class="mic-dot"></span><span class="mic-txt">语音输入</span></button>' +
-      '<span class="mic-hint muted small">' +
-      (ok ? '点一下开始说，说完再点一下' : '当前浏览器不支持语音输入，请用 Chrome / Edge') +
-      '</span></div>';
+      '<span class="mic-hint muted small">' + HINT + '</span></div>';
   };
 
   S.stop = function () {
@@ -59,7 +75,8 @@
     }
     S._rec = rec;
     rec.lang = opts.lang || 'zh-CN';
-    rec.continuous = true;
+    // 安卓 Chrome 对 continuous 支持不好，移动端用单句模式更稳
+    rec.continuous = !/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
     rec.interimResults = true;
     rec.maxAlternatives = 1;
 
@@ -106,11 +123,12 @@
       var ta = root.querySelector('textarea[data-essay]');
       if (!ta) return;
       var hint = root.querySelector('.mic-hint');
-      var defaultHint = S.supported ? '点一下开始说，说完再点一下' : '当前浏览器不支持语音输入，请用 Chrome / Edge';
-      var watchdog = null;
+      var defaultHint = HINT;
+      var waitTimer = null, killTimer = null;
 
       function clearWatch() {
-        if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+        if (waitTimer) { clearTimeout(waitTimer); waitTimer = null; }
+        if (killTimer) { clearTimeout(killTimer); killTimer = null; }
       }
       function fail(msg) {
         clearWatch();
@@ -129,7 +147,7 @@
 
       // 立刻给反馈，避免「按了没反应」的错觉
       btn.classList.add('pending');
-      if (hint) hint.textContent = '正在启动麦克风…（第一次会弹出权限询问）';
+      if (hint) hint.textContent = '正在启动麦克风…（第一次会弹出权限询问，请点「允许」）';
 
       S.start({
         onStart: function () {
@@ -158,12 +176,18 @@
         }
       });
 
-      // 4 秒还没进到「正在听」就认为卡住了
-      watchdog = setTimeout(function () {
+      // 权限弹窗可能停留很久：先只是提醒，不要急着掐断
+      waitTimer = setTimeout(function () {
         if (S.recording) return;
-        fail('麦克风没有启动起来：请检查浏览器是否允许麦克风，或改用 Chrome / Edge，并确认网络可用');
+        if (hint) hint.textContent = '还在等麦克风…没看到授权询问的话，点地址栏的锁图标允许麦克风';
+      }, 6000);
+
+      // 25 秒还没起来，才认为是真的失败了
+      killTimer = setTimeout(function () {
+        if (S.recording) return;
+        fail('麦克风没能启动：请在地址栏允许麦克风；微信 / QQ 内置浏览器不支持，请用 Chrome 或 Edge 打开');
         S.stop();
-      }, 4000);
+      }, 25000);
     });
   };
 })(window);
