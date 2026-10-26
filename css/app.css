@@ -1514,3 +1514,25 @@ code {
   border-radius: 11px; background: var(--surface-2);
   border: 1px dashed var(--line-2);
 }
+.mic-diag {
+  border: 0; background: none; padding: 2px 4px;
+  font: inherit; font-size: 12px; color: var(--muted);
+  text-decoration: underline dotted; cursor: pointer;
+}
+.mic-diag:hover { color: var(--accent); }
+.diag-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.diag-table th {
+  text-align: left; font-weight: 600; color: var(--text-2);
+  padding: 7px 12px 7px 0; white-space: nowrap; vertical-align: top;
+  width: 108px;
+}
+.diag-table td { padding: 7px 0; word-break: break-all; }
+.diag-table tr { border-bottom: 1px solid var(--line-2); }
+.diag-tip {
+  margin-top: 16px; padding: 13px 16px; border-radius: 12px;
+  background: var(--amber-soft); font-size: 13px; line-height: 1.8;
+  color: var(--text-2);
+}
+.diag-tip ol { margin: 6px 0 6px 18px; padding: 0; }
+.diag-tip li { margin: 4px 0; }
+.diag-tip p { margin: 0 0 4px; }

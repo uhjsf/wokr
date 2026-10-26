@@ -49,7 +49,45 @@
     return '<div class="essay-tools">' +
       '<button type="button" class="mic-btn" data-act="essay-mic" title="用嘴说，自动转成文字">' +
       '<span class="mic-dot"></span><span class="mic-txt">语音输入</span></button>' +
-      '<span class="mic-hint muted small">' + HINT + '</span></div>';
+      '<span class="mic-hint muted small">' + HINT + '</span>' +
+      '<button type="button" class="mic-diag" data-act="mic-diag">没反应？</button>' +
+      '</div>';
+  };
+
+  /* 把当前环境摊开给人看，省得反复猜 */
+  S.diag = function () {
+    var ua = navigator.userAgent || '';
+    var proto = (location.protocol || '').replace(':', '');
+    var lines = [
+      ['页面地址', proto + '://' + (location.host || '本地文件')],
+      ['安全上下文', window.isSecureContext ? '是（浏览器允许用麦克风）' : '否（必须 https:// 或 localhost）'],
+      ['语音识别接口', SR ? '有' : '没有'],
+      ['最近一次错误', S.lastError || '还没有触发过'],
+      ['版本', window.APP_BUILD || '未知（可能不是最新版）'],
+      ['浏览器', ua.slice(0, 90)]
+    ];
+    return lines;
+  };
+
+  S.showDiag = function () {
+    if (!App.util || !App.util.modal) return;
+    var rows = S.diag().map(function (r) {
+      return '<tr><th>' + App.util.esc(r[0]) + '</th><td>' + App.util.esc(String(r[1])) + '</td></tr>';
+    }).join('');
+    App.util.modal({
+      title: '语音输入诊断',
+      size: 'md',
+      html: '<table class="diag-table">' + rows + '</table>' +
+        '<div class="diag-tip">' +
+        '<p><b>点了没有任何弹窗？</b>按顺序排查：</p>' +
+        '<ol>' +
+        '<li>手机系统里是否禁止了浏览器使用麦克风：设置 → 应用 → Chrome → 权限 → 麦克风</li>' +
+        '<li>是不是在<b>微信 / QQ 里点开的链接</b>：内置浏览器不支持，请右上角「在浏览器打开」</li>' +
+        '<li>国产安卓如果没装谷歌语音服务（Google），Chrome 的识别会静默失败、不弹窗——换 Edge 也一样</li>' +
+        '</ol>' +
+        '<p>前两条都排除还不行，就直接<b>点进输入框，用键盘上的 🎤 键说话</b>，效果一样。</p>' +
+        '</div>'
+    });
   };
 
   S.stop = function () {
@@ -96,6 +134,7 @@
     };
     rec.onerror = function (e) {
       var key = (e && e.error) || 'error';
+      S.lastError = key + (e && e.message ? ' · ' + e.message : '');
       S.recording = false;
       opts.onError && opts.onError(key, ERR[key] || ('语音识别出错：' + key));
     };
@@ -117,6 +156,8 @@
     if (!root || root._micBound) return;
     root._micBound = true;
     root.addEventListener('click', function (e) {
+      var diag = e.target.closest && e.target.closest('[data-act="mic-diag"]');
+      if (diag) { e.preventDefault(); S.showDiag(); return; }
       var btn = e.target.closest && e.target.closest('[data-act="essay-mic"]');
       if (!btn || btn.disabled) return;
       e.preventDefault();
