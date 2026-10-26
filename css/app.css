@@ -1382,3 +1382,130 @@ code {
   .cfg-row { gap: 8px; }
   .cfg-sub { min-width: 0; }
 }
+
+/* =============================================================
+   主观题：写答案 + 对比
+   ============================================================= */
+.essay-block { margin-top: 20px; }
+.essay-label {
+  font-size: 13px; color: var(--text-2); margin-bottom: 9px; font-weight: 600;
+}
+.essay-input {
+  width: 100%; box-sizing: border-box;
+  min-height: 110px; padding: 14px 16px;
+  border-radius: 14px; border: 1px solid var(--line-2);
+  background: var(--surface-2); color: var(--text);
+  font: inherit; font-size: 14.5px; line-height: 1.8;
+  resize: vertical; outline: none;
+  transition: border-color .18s, box-shadow .18s;
+}
+.essay-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  background: var(--surface);
+}
+.essay-input[readonly] { background: var(--surface-3); color: var(--text-2); }
+.essay-actions {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 12px;
+}
+
+/* 对比面板 */
+.essay-compare { margin-top: 18px; }
+.ec-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 14px;
+}
+.ec-col {
+  border-radius: 14px; padding: 14px 16px;
+  background: var(--surface-2); border: 1px solid var(--line-2);
+  min-width: 0;
+}
+.ec-title {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 12.5px; font-weight: 700; color: var(--text-2);
+  margin-bottom: 9px;
+}
+.ec-tag {
+  font-weight: 500; font-size: 11.5px;
+  padding: 1px 7px; border-radius: 6px;
+  background: var(--green-soft); color: var(--green);
+}
+.ec-body {
+  font-size: 14px; line-height: 1.8; color: var(--text);
+  white-space: pre-wrap; word-break: break-word;
+  max-height: 380px; overflow: auto;
+}
+.ec-body mark {
+  background: rgba(16, 185, 129, .18);
+  color: inherit; border-radius: 3px; padding: 0 1px;
+}
+.ec-stat {
+  margin-top: 12px; padding: 10px 14px;
+  border-radius: 12px; background: var(--green-soft);
+  font-size: 13px; color: var(--text-2);
+}
+.ec-stat b { color: var(--green); font-size: 15px; }
+.ec-stat .muted { margin-left: 8px; }
+
+@media (max-width: 780px) {
+  .ec-grid { grid-template-columns: 1fr; }
+}
+
+/* =============================================================
+   化学式上下标
+   ============================================================= */
+.qstem sub, .qstem sup,
+.otxt sub, .otxt sup,
+.fb-answer sub, .fb-answer sup,
+.review-expl sub, .review-expl sup,
+.ec-body sub, .ec-body sup,
+.answer-block sub, .answer-block sup,
+.detail-ans sub, .detail-ans sup,
+.pq-stem sub, .pq-stem sup,
+.pq-opts sub, .pq-opts sup {
+  font-size: .72em;
+  line-height: 0;
+  position: relative;
+  vertical-align: baseline;
+}
+.qstem sub, .otxt sub, .fb-answer sub, .review-expl sub, .ec-body sub,
+.answer-block sub, .detail-ans sub, .pq-stem sub, .pq-opts sub { bottom: -.28em; }
+.qstem sup, .otxt sup, .fb-answer sup, .review-expl sup, .ec-body sup,
+.answer-block sup, .detail-ans sup, .pq-stem sup, .pq-opts sup { top: -.45em; }
+/* 语音输入 */
+.essay-tools {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 10px;
+}
+.mic-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 7px 14px; border-radius: 11px;
+  border: 1px solid var(--line-2); background: var(--surface);
+  color: var(--text-2); font: inherit; font-size: 13px; font-weight: 600;
+  cursor: pointer; transition: all .18s;
+}
+.mic-btn:hover:not(:disabled) {
+  border-color: var(--accent); color: var(--accent); background: var(--accent-soft);
+}
+.mic-btn:disabled { opacity: .45; cursor: not-allowed; }
+.mic-dot {
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--muted); transition: background .2s;
+}
+.mic-btn.on {
+  border-color: var(--red); color: var(--red); background: var(--red-soft);
+}
+.mic-btn.on .mic-dot {
+  background: var(--red);
+  animation: micPulse 1.2s ease-in-out infinite;
+}
+@keyframes micPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, .5); }
+  50% { box-shadow: 0 0 0 5px rgba(239, 68, 68, 0); }
+}
+.mic-hint { flex: 1; min-width: 140px; }
+.mic-hint:empty { display: none; }
+.mic-btn.pending { border-color: var(--amber); color: var(--amber); background: var(--amber-soft); }
+.mic-btn.pending .mic-dot {
+  background: var(--amber);
+  animation: micPulse 1.2s ease-in-out infinite;
+}

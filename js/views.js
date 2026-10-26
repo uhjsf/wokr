@@ -3,6 +3,7 @@
   'use strict';
   var App = global.App, U = App.util, QB = global.QB, store = App.store;
   var esc = U.esc, $ = U.$, $$ = U.$$;
+  var chemHtml = function (s) { return App.chem ? App.chem(s) : U.esc(s); };
   var Views = App.views = {};
   var S = App.state = { practice: null, exam: null, result: null, filter: null };
   var autoNextTimer = null;
@@ -36,7 +37,7 @@
     return h;
   }
   function stemHtml(q) {
-    var s = esc(q.stem)
+    var s = chemHtml(q.stem)
       .replace(/（\s*）/g, '（<i class="blank"></i>）')
       .replace(/\(\s*\)/g, '（<i class="blank"></i>）');
     return '<div class="qstem">' + s + '</div>';
@@ -71,7 +72,7 @@
           else if (pickedArr.indexOf(o.k) >= 0) cls += ' wrong';
         }
         html += '<button type="button" class="' + cls + '" data-pick="' + o.k + '">' +
-          optLetter(o.k) + '<span class="otxt">' + esc(o.t) + '</span>' +
+          optLetter(o.k) + '<span class="otxt">' + chemHtml(o.t) + '</span>' +
           (opts.reveal && q.answer.indexOf(o.k) >= 0 ? '<span class="mark">✓</span>' : '') +
           '</button>';
       });
@@ -82,17 +83,98 @@
 
   function feedbackHtml(q, st) {
     if (!st || !st.done) return '';
+    if (q.type === 'essay') return '';
     var ok = st.ok;
     var h = '<div class="feedback ' + (ok ? 'ok' : 'bad') + '">';
     h += '<div class="fb-title">' + (ok ? '✓ 回答正确' : '✕ 回答错误') + '</div>';
-    if (q.type === 'essay') {
-      h += '<div class="fb-answer"><b>参考答案：</b>' + esc(q.analysis || '（无参考答案）') + '</div>';
-      return h + '</div>';
-    }
     if (!ok) {
       h += '<div class="fb-answer"><b>正确答案：</b>' + esc(QB.answerText(q)) + '</div>';
     }
-    if (q.analysis) h += '<div class="fb-answer"><b>解析：</b>' + esc(q.analysis) + '</div>';
+    if (q.analysis) h += '<div class="fb-answer"><b>解析：</b>' + chemHtml(q.analysis) + '</div>';
+    h += '</div>';
+    return h;
+  }
+
+  /* ---------- 主观题：写答案 + 与参考答案对比 ---------- */
+
+  /* 在参考答案里标出「你也写到了」的片段（连续 ≥4 字的公共片段） */
+  function markOverlap(ref, mine) {
+    var u = String(mine || '').replace(/\s+/g, '');
+    if (!u || !ref) return { html: esc(ref || ''), matched: 0 };
+    var out = '', i = 0, n = ref.length, matched = 0;
+    while (i < n) {
+      var best = 0;
+      var maxLen = Math.min(18, n - i);
+      for (var len = maxLen; len >= 4; len--) {
+        var seg = ref.substr(i, len).replace(/\s+/g, '');
+        if (seg.length >= 4 && u.indexOf(seg) >= 0) { best = len; break; }
+      }
+      if (best) {
+        var slice = ref.substr(i, best);
+        var lead = (slice.match(/^\s*/) || [''])[0];
+        var trail = (slice.match(/\s*$/) || [''])[0];
+        var core = slice.slice(lead.length, slice.length - trail.length);
+        out += esc(lead) + '<mark>' + esc(core) + '</mark>' + esc(trail);
+        matched += best;
+        i += best;
+      } else {
+        out += esc(ref[i]);
+        i += 1;
+      }
+    }
+    return { html: out, matched: matched };
+  }
+
+  /* 我的答案 / 参考答案 并排对比 */
+  function essayCompareHtml(q, st) {
+    var mine = String((st && st.text) || '').trim();
+    var ref = String(q.analysis || '').trim();
+    var marked = ref ? markOverlap(ref, mine) : { html: '', matched: 0 };
+    var h = '<div class="essay-compare">';
+    h += '<div class="ec-grid">';
+    h += '<div class="ec-col"><div class="ec-title">我的答案</div>' +
+      '<div class="ec-body">' + (mine ? chemHtml(mine) : '<span class="muted">（没有写）</span>') + '</div></div>';
+    h += '<div class="ec-col"><div class="ec-title">参考答案' +
+      (ref && mine ? '<span class="ec-tag">绿色 = 你也写到了</span>' : '') + '</div>' +
+      '<div class="ec-body">' + (ref ? (App.chemRaw ? App.chemRaw(marked.html) : marked.html) : '<span class="muted">（原文档没有给出参考答案）</span>') +
+      '</div></div>';
+    h += '</div>';
+    if (ref && mine) {
+      var pct = Math.max(0, Math.min(100, Math.round(marked.matched / ref.replace(/\s+/g, '').length * 100)));
+      h += '<div class="ec-stat">参考答案里约 <b>' + pct + '%</b> 的内容你也写到了' +
+        '<span class="muted">（按文字重合度估算，仅供参考，得分还得自己判断）</span></div>';
+    }
+    h += '</div>';
+    return h;
+  }
+
+  /* 主观题作答区 */
+  function essayBlockHtml(q, st) {
+    st = st || {};
+    var submitted = !!st.submitted;
+    var done = !!st.done;
+    var h = '<div class="essay-block">';
+    h += '<div class="essay-label">' + (submitted ? '你的作答' : '写下你的答案（不写也可以，直接看参考答案）') + '</div>';
+    h += '<textarea class="essay-input" data-essay rows="5" placeholder="把解答写在这里，提交后会自动和参考答案对比…"' +
+      (submitted ? ' readonly' : '') + '>' + esc(st.text || '') + '</textarea>' +
+      (submitted ? '' : (App.speech ? App.speech.html() : ''));
+    if (!submitted) {
+      h += '<div class="essay-actions">' +
+        '<button class="btn btn-primary" data-act="essay-submit">提交并对比</button>' +
+        '<button class="btn btn-ghost" data-act="reveal">直接看参考答案</button>' +
+        '</div>';
+    } else {
+      h += essayCompareHtml(q, st);
+      h += '<div class="essay-actions">';
+      if (!done) {
+        h += '<span class="muted small">对比完了，给自己评一下：</span>' +
+          '<button class="btn btn-danger-soft" data-act="essay-no">不会</button>' +
+          '<button class="btn btn-success" data-act="essay-yes">会做</button>';
+      } else {
+        h += '<span class="muted">已自评：' + (st.ok ? '会做' : '不会') + '</span>';
+      }
+      h += '</div>';
+    }
     h += '</div>';
     return h;
   }
@@ -433,6 +515,20 @@
     return s.order[key];
   }
 
+  var essaySaveTimer = null;
+
+  /* 真正「已答」的数量：客观题选了选项、主观题提交过或自评过 */
+  function answeredCount(s) {
+    if (!s) return 0;
+    var n = 0;
+    for (var k in s.answers) {
+      var a = s.answers[k];
+      if (!a) continue;
+      if (a.done || (a.picked && a.picked.length) || a.submitted) n++;
+    }
+    return n;
+  }
+
   function practiceCardHtml() {
     var s = S.practice;
     if (!s) return '';
@@ -457,19 +553,10 @@
     }
 
     if (q.type === 'essay') {
-      if (st && st.done) {
-        html += feedbackHtml(q, st);
-      }
-      html += '<div class="essay-actions">' +
-        (st && st.done
-          ? '<span class="muted">已自评：' + (st.ok ? '会做' : '不会') + '</span>'
-          : '<button class="btn btn-ghost" data-act="reveal">查看参考答案</button>' +
-            '<button class="btn btn-danger-soft" data-act="essay-no">不会</button>' +
-            '<button class="btn btn-success" data-act="essay-yes">会做</button>') +
-        '</div>';
+      html += essayBlockHtml(q, st);
+    } else {
+      html += feedbackHtml(q, st);
     }
-
-    html += feedbackHtml(q, st);
 
     html += '<div class="qfoot">' +
       '<button class="btn btn-ghost" data-act="prev" ' + (s.idx === 0 ? 'disabled' : '') + '>‹ 上一题</button>' +
@@ -514,7 +601,7 @@
       };
     }
     var s = S.practice;
-    var answered = Object.keys(s.answers).length;
+    var answered = answeredCount(s);
     var html = '<div class="page">' +
       '<div class="practice-top">' +
         '<div class="pt-left">' +
@@ -595,16 +682,30 @@
           break;
         case 'reveal':
           var q3 = currentPracticeQ();
-          U.modal({
-            title: '参考答案',
-            html: '<div class="answer-block">' + esc(q3.analysis || '（无参考答案）') + '</div>'
-          });
+          var st3 = s.answers[q3.id] || (s.answers[q3.id] = { picked: [] });
+          st3.submitted = true;
+          saveSession();
+          refreshCard(root);
+          break;
+        case 'essay-submit':
+          var q5 = currentPracticeQ();
+          var st5 = s.answers[q5.id] || (s.answers[q5.id] = { picked: [] });
+          if (!String(st5.text || '').trim()) {
+            U.toast('还没写内容，可以先写几句，或者点「直接看参考答案」');
+            return;
+          }
+          st5.submitted = true;
+          saveSession();
+          refreshCard(root);
           break;
         case 'essay-yes':
         case 'essay-no':
           var q4 = currentPracticeQ();
           var yes = act === 'essay-yes';
-          s.answers[q4.id] = { picked: [], done: true, ok: yes };
+          var st4 = s.answers[q4.id] || (s.answers[q4.id] = { picked: [] });
+          st4.done = true;
+          st4.ok = yes;
+          st4.submitted = true;
           store.recordEssay(q4, yes);
           saveSession();
           refreshCard(root);
@@ -621,12 +722,27 @@
       }
     });
 
+    if (App.speech) App.speech.bind(root);
+
+    root.addEventListener('input', function (e) {
+      var ta = e.target.closest ? e.target.closest('textarea[data-essay]') : null;
+      if (!ta) return;
+      var q = currentPracticeQ();
+      if (!q || !S.practice) return;
+      var st = S.practice.answers[q.id] || (S.practice.answers[q.id] = { picked: [] });
+      st.text = ta.value;
+      clearTimeout(essaySaveTimer);
+      essaySaveTimer = setTimeout(function () { saveSession(); }, 500);
+    });
+
     root.addEventListener('keydown', function (e) { handleHotkey(e, root); });
   }
 
   function handleHotkey(e, root) {
     var s = S.practice;
     if (!s || s.idx >= s.pool.length) return;
+    var tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'textarea' || tag === 'input' || e.target.isContentEditable) return;
     var q = currentPracticeQ();
     if (!q) return;
     var st = s.answers[q.id];
@@ -714,7 +830,7 @@
       s._dir = null;
     }
     var top = root.querySelector('.practice-top .muted');
-    if (top && s) top.textContent = '已答 ' + Object.keys(s.answers).length + ' / ' + s.pool.length;
+    if (top && s) top.textContent = '已答 ' + answeredCount(s) + ' / ' + s.pool.length;
     var bar = root.querySelector('.practice-top + .bar > i');
     if (bar && s) bar.style.width = Math.min(100, Object.keys(s.answers).length / Math.max(1, s.pool.length) * 100) + '%';
     if (s && s.idx >= s.pool.length && !s._finished) { s._finished = true; finishPractice(); }
@@ -1066,7 +1182,7 @@
 
   function examRunView() {
     var e = S.exam;
-    var answered = Object.keys(e.answers).filter(function (k) { return (e.answers[k].picked || []).length || e.answers[k].done; }).length;
+    var answered = Object.keys(e.answers).filter(function (k) { var x = e.answers[k]; return (x.picked || []).length || x.done || (x.text && x.text.trim()); }).length;
     var html = '<div class="page exam-page">' +
       '<div class="exam-bar">' +
         '<div class="exam-timer" id="exam-timer">' + (e.duration ? U.fmtClock(e.duration - (Date.now() - e.startedAt) / 1000) : '不限时') + '</div>' +
@@ -1122,12 +1238,29 @@
             if (e2.idx > 0) { e2.idx -= 1; App.render(); }
           } else if (act === 'submit-exam') {
             var left = e2.items.length - Object.keys(e2.answers).filter(function (k) {
-              var x = e2.answers[k]; return (x.picked && x.picked.length) || x.done;
+              var x = e2.answers[k];
+              return (x.picked && x.picked.length) || x.done || (x.text && x.text.trim());
             }).length;
             if (left > 0 && !confirm('还有 ' + left + ' 题未作答，确定交卷吗？')) return;
             submitExam();
           }
         });
+        root.addEventListener('input', function (ev) {
+          var ta = ev.target.closest ? ev.target.closest('textarea[data-essay]') : null;
+          if (!ta || !S.exam) return;
+          var q = examQ();
+          if (!q) return;
+          var a = S.exam.answers[q.id] || (S.exam.answers[q.id] = { picked: [] });
+          a.text = ta.value;
+          var b = root.querySelector('.exam-progress b');
+          if (b) {
+            b.textContent = Object.keys(S.exam.answers).filter(function (k) {
+              var x = S.exam.answers[k];
+              return (x.picked && x.picked.length) || x.done || (x.text && x.text.trim());
+            }).length;
+          }
+        });
+        if (App.speech) App.speech.bind(root);
         startExamTimer();
       }
     };
@@ -1145,7 +1278,10 @@
     h += stemHtml(q);
     h += optionsHtml(list, a.picked, {});
     if (q.type === 'essay') {
-      h += '<div class="muted small" style="margin-top:12px">本题 ' + examScoreNow() + ' 分，主观题交卷后按参考答案自评给分。</div>';
+      h += '<div class="essay-block"><div class="essay-label">在下方作答（本题 ' + examScoreNow() +
+        ' 分，交卷后可与参考答案对比并自评）</div>' +
+        '<textarea class="essay-input" data-essay rows="6" placeholder="把解答写在这里…">' +
+        esc(a.text || '') + '</textarea>' + (App.speech ? App.speech.html() : '') + '</div>';
     }
     h += '<div class="qfoot"><button class="btn btn-ghost" data-act="prev" ' + (e.idx === 0 ? 'disabled' : '') + '>‹ 上一题</button>' +
       '<div></div><button class="btn btn-primary" data-act="next" ' + (e.idx === e.items.length - 1 ? 'disabled' : '') + '>下一题 ›</button></div>';
@@ -1163,7 +1299,7 @@
     if (p) p.textContent = answered;
     $$('.sheet-item', root).forEach(function (b, i) {
       var a = e.answers[e.items[i].id];
-      b.classList.toggle('done', !!(a && a.picked && a.picked.length));
+      b.classList.toggle('done', !!(a && ((a.picked && a.picked.length) || (a.text && a.text.trim()))));
       b.classList.toggle('cur', i === e.idx);
     });
   }
@@ -1212,6 +1348,7 @@
       perQ.push({
         id: it.id, picked: a.picked, ok: ok,
         score: got, max: it.score, kind: it.kind,
+        text: a.text || '',
         manual: q.type === 'essay'
       });
     });
@@ -1294,8 +1431,10 @@
       if (q.type !== 'essay') {
         html += optionsHtml(q, item.picked, { reveal: true });
         html += '<div class="review-ans">你的答案：<b>' + (item.picked.join('') || '未作答') + '</b>　正确答案：<b>' + esc(QB.answerText(q)) + '</b></div>';
+        if (q.analysis) html += '<div class="review-expl"><b>解析：</b>' + chemHtml(q.analysis) + '</div>';
+      } else {
+        html += essayCompareHtml(q, { text: item.text });
       }
-      if (q.analysis) html += '<div class="review-expl"><b>参考答案：</b>' + esc(q.analysis) + '</div>';
       if (item.manual) {
         html += '<div class="grade-row">' +
           '<span class="muted small">自评得分</span>' +
@@ -1366,11 +1505,11 @@
     items.forEach(function (item, i) {
       var q = item.q;
       if (!q) return;
-      h += '<div class="print-q"><div class="pq-stem">' + (i + 1) + '. ' + esc(q.stem) +
+      h += '<div class="print-q"><div class="pq-stem">' + (i + 1) + '. ' + chemHtml(q.stem) +
         (item.score ? '<span class="pq-score">（' + item.score + ' 分）</span>' : '') + '</div>';
       if (q.options && q.options.length) {
         h += '<div class="pq-opts">' + q.options.map(function (o) {
-          return '<span>' + o.k + '. ' + esc(o.t) + '</span>';
+          return '<span>' + o.k + '. ' + chemHtml(o.t) + '</span>';
         }).join('') + '</div>';
       }
       if (withAnswers) {

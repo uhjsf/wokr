@@ -17,6 +17,7 @@
   var DEFAULTS = {
     theme: 'light',
     autoNext: true,
+    chem: true,
     shuffleOptions: false,
     fontScale: 1,
     lastChapter: ''

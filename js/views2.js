@@ -165,10 +165,10 @@
       html += ui.optionsHtml(q, [], { reveal: true });
     }
     if (q.type === 'essay') {
-      html += '<div class="answer-block">' + esc(q.analysis || '（无参考答案）') + '</div>';
+      html += '<div class="answer-block">' + (App.chem ? App.chem(q.analysis || '（无参考答案）') : esc(q.analysis || '（无参考答案）')) + '</div>';
     }
     html += '<div class="detail-ans">正确答案：<b>' + esc(QB.answerText(q)) + '</b></div>';
-    if (q.analysis && q.type !== 'essay') html += '<div class="detail-ans">解析：' + esc(q.analysis) + '</div>';
+    if (q.analysis && q.type !== 'essay') html += '<div class="detail-ans">解析：' + (App.chem ? App.chem(q.analysis) : esc(q.analysis)) + '</div>';
     html += '<div class="detail-meta muted small">章节：' + esc(q.chapter) + (q.section ? ' / ' + esc(q.section) : '') +
       (p ? '　已练 ' + p.n + ' 次，答对 ' + p.ok + ' 次' : '　尚未练习') + '</div>';
 
@@ -586,24 +586,28 @@
   /* 题库自带的「哪些题没入库」备注 */
   function excludedNoteHtml() {
     var h = '';
-    var ex = store.meta && store.meta.excluded;
-    if (ex && ex.count) {
+    var list = store.meta && store.meta.excluded;
+    if (list && list.length) {
+      var total = list.reduce(function (a, g) { return a + (g.count || 0); }, 0);
       h += '<div class="about-note">';
-      h += '<div class="an-title">备注：有 ' + ex.count + ' 道题不在可用题库内</div>';
-      h += '<div class="an-body">' + esc(ex.reason || '题目信息不完整') +
-        '，系统已自动跳过，不影响其余题目练习与组卷判分。</div>';
-      h += '<div class="an-meta">';
-      if (ex.source) {
-        h += '原文位置：<b>' + esc(ex.source) + (ex.pages ? ' ' + esc(ex.pages) : '') + '</b><br>';
-      }
-      if (ex.chapters && ex.chapters.length) {
-        h += '所属章节：' + esc(ex.chapters.join('、')) +
-          (ex.kinds && ex.kinds.length ? ' · ' + esc(ex.kinds.join('、')) : '') + '<br>';
-      }
-      if (ex.numbers && ex.numbers.length) {
-        h += '原题号：' + esc(compressNums(ex.numbers));
-      }
-      h += '</div></div>';
+      h += '<div class="an-title">备注：有 ' + total + ' 道题不在可用题库内</div>';
+      h += '<div class="an-body">这些题在原文档里要么是图片、要么排版已损坏，' +
+        '转成纯文字后无法作答，系统已自动跳过，不影响其余题目练习与组卷判分。</div>';
+      list.forEach(function (g) {
+        h += '<div class="an-meta">';
+        h += '<b>' + esc(g.source || '') + (g.pages ? ' ' + esc(g.pages) : '') + '</b>' +
+          '　共 ' + (g.count || 0) + ' 道<br>';
+        h += esc(g.reason || '题目信息不完整');
+        if (g.chapters && g.chapters.length) {
+          h += '<br>所属章节：' + esc(g.chapters.join('、')) +
+            (g.kinds && g.kinds.length ? ' · ' + esc(g.kinds.join('、')) : '');
+        }
+        if (g.numbers && g.numbers.length) {
+          h += '<br>原题号：' + esc(compressNums(g.numbers));
+        }
+        h += '</div>';
+      });
+      h += '</div>';
     }
 
     var fn = store.meta && store.meta.formulaNotes;
@@ -631,6 +635,8 @@
           '<label class="switch"><input type="checkbox" data-set="autoNext" ' + (s.autoNext ? 'checked' : '') + '><i></i></label></div>' +
         '<div class="set-row"><div><b>打乱选项顺序</b><div class="muted small">避免死记选项位置</div></div>' +
           '<label class="switch"><input type="checkbox" data-set="shuffleOptions" ' + (s.shuffleOptions ? 'checked' : '') + '><i></i></label></div>' +
+        '<div class="set-row"><div><b>化学式排版</b><div class="muted small">把 H2SO4 显示成 H₂SO₄、Ca(OH)2 显示成 Ca(OH)₂</div></div>' +
+          '<label class="switch"><input type="checkbox" data-set="chem" ' + (s.chem !== false ? 'checked' : '') + '><i></i></label></div>' +
         '<div class="set-row"><div><b>正文字号</b><div class="muted small">题目文字的显示大小</div></div>' +
           '<div class="chips">' + [0.9, 1, 1.15, 1.3].map(function (v) {
             return '<button class="chip chip-btn ' + (s.fontScale === v ? 'on' : '') + '" data-font="' + v + '">' + Math.round(v * 100) + '%</button>';
