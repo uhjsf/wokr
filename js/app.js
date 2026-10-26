@@ -47,6 +47,9 @@
     highlightNav(name);
     document.title = ROUTES[name] + ' · 智题';
     window.scrollTo({ top: 0, behavior: 'auto' });
+    if (App.motion) {
+      try { App.motion.page(view); } catch (err) { console.error(err); }
+    }
   };
 
   App.applyTheme = function () {
@@ -70,6 +73,20 @@
     App.render();
 
     window.addEventListener('hashchange', function () { App.render(); });
+
+    // 顶栏：滚动后加深阴影，产生"浮起来"的层次
+    var topbar = document.querySelector('.topbar');
+    if (topbar) {
+      var scrollTick = false;
+      window.addEventListener('scroll', function () {
+        if (scrollTick) return;
+        scrollTick = true;
+        requestAnimationFrame(function () {
+          scrollTick = false;
+          topbar.classList.toggle('scrolled', window.scrollY > 6);
+        });
+      }, { passive: true });
+    }
 
     var themeBtn = document.getElementById('btn-theme');
     if (themeBtn) {

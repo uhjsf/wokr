@@ -52,8 +52,21 @@
     if (!bank.meta) bank.meta = {};
     var qs = bank.questions || [];
     var chapters = bank.chapters || [];
+
+    // ---- 科目 ----
+    var subjects = bank.subjects && bank.subjects.length ? bank.subjects : null;
+    if (!subjects) {
+      subjects = [{ id: 's-all', name: (bank.meta && bank.meta.title) || '题库' }];
+      chapters.forEach(function (c) { if (!c.subjectId) c.subjectId = 's-all'; });
+    }
+    var subjectMap = {};
+    subjects.forEach(function (s) { subjectMap[s.id] = s; });
+
     var chByName = {};
-    chapters.forEach(function (c) { chByName[c.name] = c; });
+    chapters.forEach(function (c) {
+      if (!c.subjectId || !subjectMap[c.subjectId]) c.subjectId = subjects[0].id;
+      chByName[c.name] = c;
+    });
 
     var map = {};
     var fixed = [];
@@ -73,20 +86,32 @@
       }
       if (!q.chapter) q.chapter = '未分章';
       if (!chByName[q.chapter]) {
-        chByName[q.chapter] = { id: 'ch' + (chapters.length + 1), name: q.chapter };
+        chByName[q.chapter] = { id: 'ch' + (chapters.length + 1), name: q.chapter, subjectId: q.subjectId || subjects[0].id };
         chapters.push(chByName[q.chapter]);
       }
       q.chapterId = chByName[q.chapter].id;
+      if (!q.subjectId || !subjectMap[q.subjectId]) q.subjectId = chByName[q.chapter].subjectId;
+      if (!q.kind) q.kind = (q.type === 'essay' ? 'essay' : q.type);
       map[q.id] = q;
       fixed.push(q);
     }
     store.bank = bank;
     store.questions = fixed;
     store.map = map;
+    store.subjects = subjects;
     store.chapters = chapters;
     store.sections = bank.sections || [];
     store.validQuestions = fixed.filter(function (q) { return q.valid; });
     store.meta = bank.meta;
+  };
+
+  store.chaptersOf = function (subjectIds) {
+    if (!subjectIds || !subjectIds.length) return store.chapters.slice();
+    return store.chapters.filter(function (c) { return subjectIds.indexOf(c.subjectId) >= 0; });
+  };
+  store.subjectName = function (id) {
+    for (var i = 0; i < store.subjects.length; i++) if (store.subjects[i].id === id) return store.subjects[i].name;
+    return '';
   };
 
   store.setBank = function (bank) {

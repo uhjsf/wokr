@@ -7,7 +7,7 @@
   var ui = App.ui;
   var fmtCount = ui.fmtCount, pct = ui.pct;
 
-  var bankState = { kw: '', chapter: '', type: '', level: '', page: 1, onlyValid: true, sort: 'default' };
+  var bankState = { kw: '', subject: '', chapter: '', type: '', level: '', page: 1, onlyValid: true, sort: 'default' };
 
   /* ================= 题库 ================= */
   Views.bank = function () {
@@ -31,8 +31,12 @@
 
     html += '<div class="toolbar card">' +
       '<input class="input" type="search" placeholder="搜索题目关键词…" value="' + esc(bankState.kw) + '" data-search>' +
+      '<select class="input" data-fsubject><option value="">全部科目</option>' +
+        store.subjects.map(function (s) {
+          return '<option value="' + esc(s.name) + '" ' + (bankState.subject === s.name ? 'selected' : '') + '>' + esc(s.name) + '</option>';
+        }).join('') + '</select>' +
       '<select class="input" data-fchapter><option value="">全部章节</option>' +
-        store.chapters.map(function (c) {
+        store.chaptersOf(bankState.subject ? [bankState.subject] : []).map(function (c) {
           return '<option value="' + c.id + '" ' + (bankState.chapter === c.id ? 'selected' : '') + '>' + esc(c.name) + '</option>';
         }).join('') + '</select>' +
       '<select class="input" data-ftype><option value="">全部题型</option>' +
@@ -97,6 +101,7 @@
         se.addEventListener('input', onSearch);
         root.addEventListener('change', function (e) {
           var t = e.target;
+          if (t.hasAttribute('data-fsubject')) { bankState.subject = t.value; bankState.chapter = ''; bankState.page = 1; App.render(); }
           if (t.hasAttribute('data-fchapter')) { bankState.chapter = t.value; bankState.page = 1; App.render(); }
           if (t.hasAttribute('data-ftype')) { bankState.type = t.value; bankState.page = 1; App.render(); }
           if (t.hasAttribute('data-flevel')) { bankState.level = t.value; bankState.page = 1; App.render(); }
@@ -138,6 +143,7 @@
     var kw = bankState.kw.toLowerCase();
     return store.questions.filter(function (q) {
       if (bankState.onlyValid && !q.valid) return false;
+      if (bankState.subject && q.subjectId !== bankState.subject) return false;
       if (bankState.chapter && q.chapterId !== bankState.chapter) return false;
       if (bankState.type && q.type !== bankState.type) return false;
       if (bankState.level && q.level !== bankState.level) return false;
@@ -563,6 +569,57 @@
   };
 
   /* ================= 设置 ================= */
+  /* 把 [11,12,18,...] 压缩成「11、12、18、……、61–69」 */
+  function compressNums(nums) {
+    var out = [], i = 0;
+    while (i < nums.length) {
+      var j = i;
+      while (j + 1 < nums.length && nums[j + 1] === nums[j] + 1) j++;
+      if (j - i >= 2) out.push(nums[i] + '–' + nums[j]);
+      else if (j > i) out.push(nums[i] + '、' + nums[j]);
+      else out.push(String(nums[i]));
+      i = j + 1;
+    }
+    return out.join('、');
+  }
+
+  /* 题库自带的「哪些题没入库」备注 */
+  function excludedNoteHtml() {
+    var h = '';
+    var ex = store.meta && store.meta.excluded;
+    if (ex && ex.count) {
+      h += '<div class="about-note">';
+      h += '<div class="an-title">备注：有 ' + ex.count + ' 道题不在可用题库内</div>';
+      h += '<div class="an-body">' + esc(ex.reason || '题目信息不完整') +
+        '，系统已自动跳过，不影响其余题目练习与组卷判分。</div>';
+      h += '<div class="an-meta">';
+      if (ex.source) {
+        h += '原文位置：<b>' + esc(ex.source) + (ex.pages ? ' ' + esc(ex.pages) : '') + '</b><br>';
+      }
+      if (ex.chapters && ex.chapters.length) {
+        h += '所属章节：' + esc(ex.chapters.join('、')) +
+          (ex.kinds && ex.kinds.length ? ' · ' + esc(ex.kinds.join('、')) : '') + '<br>';
+      }
+      if (ex.numbers && ex.numbers.length) {
+        h += '原题号：' + esc(compressNums(ex.numbers));
+      }
+      h += '</div></div>';
+    }
+
+    var fn = store.meta && store.meta.formulaNotes;
+    if (fn && fn.count) {
+      h += '<div class="about-note info">';
+      h += '<div class="an-title">另有 ' + fn.count + ' 道主观题的参考答案不完整</div>';
+      h += '<div class="an-body">原文档中这些解答是竖排公式或图片表格，转成文字后' +
+        '运算符号（× ·）与上下标会丢失。网页版保留了原文，并在答案末尾注明原因和对应页码。</div>';
+      h += '<div class="an-meta">';
+      if (fn.chapters && fn.chapters.length) h += '所属章节：' + esc(fn.chapters.join('、')) + '<br>';
+      if (fn.numbers && fn.numbers.length) h += '原题号：' + esc(compressNums(fn.numbers));
+      h += '</div></div>';
+    }
+    return h;
+  }
+
   Views.settings = function () {
     var s = store.settings;
     var html = '<div class="page">' +
@@ -597,8 +654,10 @@
         '<div class="card-head"><h2>关于</h2></div>' +
         '<p>智题 · 智能题库练习系统 · 纯前端单页应用，双击 <code>index.html</code> 即可使用。</p>' +
         '<p class="muted small">题库来源：' + esc((store.meta && store.meta.source) || '内置题库') + '<br>' +
-        '题目数：' + fmtCount(store.questions.length) + ' · 章节：' + store.chapters.length +
-        ' · 浏览器存储：' + (U.Storage.available ? '可用' : '不可用（刷新后会丢失进度）') + '</p>' +
+        '题目总数：' + fmtCount(store.questions.length) + ' 道 · 可用 ' + fmtCount(store.validQuestions.length) + ' 道' +
+        ' · 科目：' + store.subjects.length + ' 个 · 章节：' + store.chapters.length + ' 个<br>' +
+        '浏览器存储：' + (U.Storage.available ? '可用' : '不可用（刷新后会丢失进度）') + '</p>' +
+        excludedNoteHtml() +
         '<p class="muted small">快捷键：<kbd>1</kbd>-<kbd>4</kbd> 选择选项，<kbd>Enter</kbd> 提交 / 下一题，<kbd>←</kbd> <kbd>→</kbd> 切换题目。</p>' +
       '</div>' +
       '</div>';
