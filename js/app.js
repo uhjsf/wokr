@@ -52,6 +52,11 @@
     }
   };
 
+  /* 视觉氛围（胶片颗粒 + 暗角）单独开关，随时可以关掉 */
+  App.applyFx = function () {
+    var on = store.settings.grain !== false;
+    document.documentElement.setAttribute('data-fx', on ? 'on' : 'off');
+  };
   App.applyTheme = function () {
     var t = store.settings.theme === 'dark' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', t);
@@ -67,6 +72,7 @@
   function boot() {
     store.loadBank();
     App.applyTheme();
+    App.applyFx();
     App.applyFont();
 
     if (!location.hash) location.hash = '#/home';
@@ -78,12 +84,20 @@
     var topbar = document.querySelector('.topbar');
     if (topbar) {
       var scrollTick = false;
+      var bgShift = -1;
       window.addEventListener('scroll', function () {
         if (scrollTick) return;
         scrollTick = true;
         requestAnimationFrame(function () {
           scrollTick = false;
-          topbar.classList.toggle('scrolled', window.scrollY > 6);
+          var y = window.scrollY || 0;
+          topbar.classList.toggle('scrolled', y > 6);
+          // 背景极光随滚动轻微下移，制造前后层视差（上限 140px，越滚越慢）
+          var v = Math.min(140, y * 0.08);
+          if (Math.abs(v - bgShift) > 0.5) {
+            bgShift = v;
+            document.documentElement.style.setProperty('--bg-shift', v.toFixed(1) + 'px');
+          }
         });
       }, { passive: true });
     }

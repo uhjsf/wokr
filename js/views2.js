@@ -554,9 +554,10 @@
 
       '<div class="card"><div class="card-head"><h2>章节正确率</h2><span class="muted">按答题次数统计</span></div>' +
         '<div class="chapter-table">' + cs.map(function (c) {
-          return '<div class="ct-row">' +
-            '<div class="ct-name">' + esc(c.name) + '</div>' +
-            '<div class="ct-bar">' + ui.progressBar(c.coverage) + '</div>' +
+          var ccol = ui.chColor(c.name);
+          return '<div class="ct-row" style="--ch:' + ccol + '">' +
+            '<div class="ct-name"><i class="ch-dot"></i>' + esc(c.name) + '</div>' +
+            '<div class="ct-bar">' + ui.progressBar(c.coverage, ccol) + '</div>' +
             '<div class="ct-num">' + Math.round(c.coverage * 100) + '%</div>' +
             '<div class="ct-sub muted small">' + c.done + '/' + c.practiceable + '</div>' +
             '<div class="ct-acc ' + (c.accuracy >= 0.8 ? 'good' : c.accuracy >= 0.6 ? 'mid' : 'low') + '">' +
@@ -637,6 +638,8 @@
           '<label class="switch"><input type="checkbox" data-set="shuffleOptions" ' + (s.shuffleOptions ? 'checked' : '') + '><i></i></label></div>' +
         '<div class="set-row"><div><b>化学式排版</b><div class="muted small">把 H2SO4 显示成 H₂SO₄、Ca(OH)2 显示成 Ca(OH)₂</div></div>' +
           '<label class="switch"><input type="checkbox" data-set="chem" ' + (s.chem !== false ? 'checked' : '') + '><i></i></label></div>' +
+        '<div class="set-row"><div><b>胶片质感</b><div class="muted small">页面上的细颗粒与暗角，觉得脏可以关掉</div></div>' +
+          '<label class="switch"><input type="checkbox" data-set="grain" ' + (s.grain !== false ? 'checked' : '') + '><i></i></label></div>' +
         '<div class="set-row"><div><b>正文字号</b><div class="muted small">题目文字的显示大小</div></div>' +
           '<div class="chips">' + [0.9, 1, 1.15, 1.3].map(function (v) {
             return '<button class="chip chip-btn ' + (s.fontScale === v ? 'on' : '') + '" data-font="' + v + '">' + Math.round(v * 100) + '%</button>';
@@ -678,6 +681,7 @@
             var k = t.getAttribute('data-set');
             if (k === 'dark') { store.settings.theme = t.checked ? 'dark' : 'light'; App.applyTheme(); }
             else store.settings[k] = t.checked;
+            if (k === 'grain' && App.applyFx) App.applyFx();
             store.saveSettings();
           }
         });

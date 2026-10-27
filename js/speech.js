@@ -25,7 +25,8 @@
     return /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
   })();
 
-  var HINT_OK = '点一下开始说，说完再点一下';
+  var IS_MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '');
+  var HINT_OK = IS_MOBILE ? '点一下开始说；不灵就用键盘上的 🎤' : '点一下开始说，说完再点一下';
   var HINT_IOS = 'iPhone / iPad 不支持网页语音，点输入框后用键盘上的 🎤 听写';
   var HINT_NO = '当前浏览器不支持语音输入，请用 Chrome / Edge';
   var HINT = !SR && IS_IOS ? HINT_IOS : (!SR ? HINT_NO : HINT_OK);
@@ -83,7 +84,7 @@
         '<ol>' +
         '<li>手机系统里是否禁止了浏览器使用麦克风：设置 → 应用 → Chrome → 权限 → 麦克风</li>' +
         '<li>是不是在<b>微信 / QQ 里点开的链接</b>：内置浏览器不支持，请右上角「在浏览器打开」</li>' +
-        '<li>国产安卓如果没装谷歌语音服务（Google），Chrome 的识别会静默失败、不弹窗——换 Edge 也一样</li>' +
+        '<li>国产安卓如果没装谷歌语音服务（Google），识别会静默失败、不弹窗——<b>手机自带浏览器、Chrome、Edge 都一样</b></li>' +
         '</ol>' +
         '<p>前两条都排除还不行，就直接<b>点进输入框，用键盘上的 🎤 键说话</b>，效果一样。</p>' +
         '</div>'
@@ -226,7 +227,7 @@
       // 25 秒还没起来，才认为是真的失败了
       killTimer = setTimeout(function () {
         if (S.recording) return;
-        fail('麦克风没能启动：请在地址栏允许麦克风；微信 / QQ 内置浏览器不支持，请用 Chrome 或 Edge 打开');
+        fail('麦克风没能启动。可以点进输入框，用键盘上的 🎤 键说话（输入法自带，一样好用）；或点「没反应？」查看原因');
         S.stop();
       }, 25000);
     });

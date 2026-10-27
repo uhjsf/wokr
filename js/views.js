@@ -44,6 +44,29 @@
   }
   function optLetter(k) { return '<span class="ol">' + k + '</span>'; }
 
+  /* 打乱选项时：内容跟着走，ABCD 固定在位置上一路往下排 */
+  function shownOptions(q, s) {
+    var list = orderedOptions(q, s);
+    var changed = false;
+    for (var i = 0; i < list.length; i++) {
+      if (q.options[i] && q.options[i].k !== list[i].k) { changed = true; break; }
+    }
+    return list.map(function (o, i) {
+      return {
+        k: o.k,
+        t: o.t,
+        disp: changed ? String.fromCharCode(65 + i) : o.k
+      };
+    });
+  }
+
+  /* 原始字母 → 打乱后显示的字母 */
+  function dispOf(list, k) {
+    if (!list) return k;
+    for (var i = 0; i < list.length; i++) if (list[i].k === k) return list[i].disp;
+    return k;
+  }
+
   function optionsHtml(q, picked, opts) {
     opts = opts || {};
     var pickedArr = picked || [];
@@ -72,7 +95,7 @@
           else if (pickedArr.indexOf(o.k) >= 0) cls += ' wrong';
         }
         html += '<button type="button" class="' + cls + '" data-pick="' + o.k + '">' +
-          optLetter(o.k) + '<span class="otxt">' + chemHtml(o.t) + '</span>' +
+          optLetter(o.disp || o.k) + '<span class="otxt">' + chemHtml(o.t) + '</span>' +
           (opts.reveal && q.answer.indexOf(o.k) >= 0 ? '<span class="mark">✓</span>' : '') +
           '</button>';
       });
@@ -81,14 +104,19 @@
     return html;
   }
 
-  function feedbackHtml(q, st) {
+  function feedbackHtml(q, st, optList) {
     if (!st || !st.done) return '';
     if (q.type === 'essay') return '';
     var ok = st.ok;
     var h = '<div class="feedback ' + (ok ? 'ok' : 'bad') + '">';
     h += '<div class="fb-title">' + (ok ? '✓ 回答正确' : '✕ 回答错误') + '</div>';
     if (!ok) {
-      h += '<div class="fb-answer"><b>正确答案：</b>' + esc(QB.answerText(q)) + '</div>';
+      // 选项打乱过的话，答案要换算成屏幕上显示的字母
+      var ansTxt = QB.answerText(q);
+      if (optList && q.type !== 'judge') {
+        ansTxt = q.answer.map(function (k) { return dispOf(optList, k); }).join('');
+      }
+      h += '<div class="fb-answer"><b>正确答案：</b>' + esc(ansTxt) + '</div>';
     }
     if (q.analysis) h += '<div class="fb-answer"><b>解析：</b>' + chemHtml(q.analysis) + '</div>';
     h += '</div>';
@@ -155,7 +183,8 @@
     var done = !!st.done;
     var h = '<div class="essay-block">';
     h += '<div class="essay-label">' + (submitted ? '你的作答' : '写下你的答案（不写也可以，直接看参考答案）') + '</div>';
-    h += '<textarea class="essay-input" data-essay rows="5" placeholder="把解答写在这里，提交后会自动和参考答案对比…"' +
+    h += '<textarea class="essay-input" data-essay rows="5" placeholder="把解答写在这里，提交后会自动和参考答案对比…' +
+      (/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent || '') ? '（也可以点键盘上的 🎤 说话）' : '') + '"' +
       (submitted ? ' readonly' : '') + '>' + esc(st.text || '') + '</textarea>' +
       (submitted ? '' : (App.speech ? App.speech.html() : ''));
     if (!submitted) {
@@ -179,8 +208,24 @@
     return h;
   }
 
-  function progressBar(pct) {
-    return '<div class="bar"><i style="width:' + Math.min(100, Math.max(0, pct * 100)).toFixed(1) + '%"></i></div>';
+  function progressBar(pct, color) {
+    var w = Math.min(100, Math.max(0, pct * 100)).toFixed(1) + '%';
+    return '<div class="bar"><i style="width:' + w + (color ? ';background:' + color : '') + '"></i></div>';
+  }
+
+  /* 章节配色：让每个章节有自己的识别色 */
+  var CH_COLORS = {
+    '无机化学': '#6366f1', '分析化学': '#06b6d4', '物理化学': '#a855f7',
+    '有机化学': '#f59e0b', '化工原理': '#10b981'
+  };
+  var CH_PALETTE = ['#6366f1', '#06b6d4', '#a855f7', '#f59e0b', '#10b981', '#ef4444', '#0ea5e9', '#8b5cf6'];
+  var chColorMap = {};
+  function chColor(name) {
+    if (CH_COLORS[name]) return CH_COLORS[name];
+    if (!chColorMap[name]) {
+      chColorMap[name] = CH_PALETTE[Object.keys(chColorMap).length % CH_PALETTE.length];
+    }
+    return chColorMap[name];
   }
 
   /* 线性图标（内联 SVG，无外部依赖） */
@@ -216,7 +261,7 @@
   App.ui = {
     typeChip: typeChip, metaLine: metaLine, stemHtml: stemHtml, optionsHtml: optionsHtml,
     feedbackHtml: feedbackHtml, progressBar: progressBar, empty: empty, statCard: statCard,
-    fmtCount: fmtCount, pct: pct, TYPE_CLASS: TYPE_CLASS
+    fmtCount: fmtCount, pct: pct, TYPE_CLASS: TYPE_CLASS, chColor: chColor
   };
 
   /* ================= 首页 ================= */
@@ -267,9 +312,10 @@
       '<div class="card-head"><h2>章节掌握度</h2><a class="link" href="#/stats">全部 ></a></div>' +
       '<div class="chapter-list">' +
       cs.slice(0, 8).map(function (c) {
-        return '<div class="chapter-row">' +
-          '<div class="cr-name" title="' + esc(c.name) + '">' + esc(c.name) + '</div>' +
-          '<div class="cr-bar">' + progressBar(c.coverage) + '</div>' +
+        var ccol = chColor(c.name);
+        return '<div class="chapter-row" style="--ch:' + ccol + '">' +
+          '<div class="cr-name" title="' + esc(c.name) + '"><i class="ch-dot"></i>' + esc(c.name) + '</div>' +
+          '<div class="cr-bar">' + progressBar(c.coverage, ccol) + '</div>' +
           '<div class="cr-num">' + Math.round(c.coverage * 100) + '%</div>' +
           '<div class="cr-act"><button class="btn btn-xs btn-ghost" data-chapter="' + c.id + '">练习</button></div>' +
         '</div>';
@@ -537,7 +583,7 @@
     var q = currentPracticeQ();
     if (!q) return practiceDoneHtml();
     var st = s.answers[q.id] || null;
-    var optList = q.type === 'judge' ? null : orderedOptions(q, s);
+    var optList = q.type === 'judge' ? null : shownOptions(q, s);
     var q2 = q.type === 'judge' ? q : { type: q.type, options: optList, answer: q.answer, stem: q.stem };
 
     var html = '<div class="qcard">';
@@ -555,7 +601,7 @@
     if (q.type === 'essay') {
       html += essayBlockHtml(q, st);
     } else {
-      html += feedbackHtml(q, st);
+      html += feedbackHtml(q, st, optList);
     }
 
     html += '<div class="qfoot">' +
@@ -1271,7 +1317,7 @@
     if (!q) return '';
     var e = S.exam;
     var a = e.answers[q.id] || { picked: [] };
-    var list = q.type === 'judge' ? q : { type: q.type, options: orderedOptions(q, e), answer: q.answer, stem: q.stem };
+    var list = q.type === 'judge' ? q : { type: q.type, options: shownOptions(q, e), answer: q.answer, stem: q.stem };
     var h = '<div class="qcard">';
     h += '<div class="qmeta">' + metaLine(q) +
       '<span class="qcount">第 ' + (e.idx + 1) + ' / ' + e.items.length + ' 题 · ' + examScoreNow() + ' 分</span></div>';

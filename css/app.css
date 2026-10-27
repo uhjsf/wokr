@@ -1536,3 +1536,314 @@ code {
 .diag-tip ol { margin: 6px 0 6px 18px; padding: 0; }
 .diag-tip li { margin: 4px 0; }
 .diag-tip p { margin: 0 0 4px; }
+/* =============================================================
+   质感升级：胶片颗粒 / 暗角 / 玻璃 / 首屏
+   ============================================================= */
+
+/* ---- 1. 全局氛围：暗角 + 胶片颗粒 ---- */
+html[data-fx="on"]::before {
+  content: ""; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+  background:
+    radial-gradient(120% 90% at 50% -10%, transparent 42%, rgba(16, 24, 64, .06) 100%),
+    radial-gradient(90% 80% at 50% 120%, transparent 45%, rgba(16, 24, 64, .05) 100%);
+}
+[data-theme="dark"] html[data-fx="on"]::before {
+  background:
+    radial-gradient(120% 90% at 50% -10%, transparent 38%, rgba(0, 0, 0, .45) 100%),
+    radial-gradient(90% 80% at 50% 120%, transparent 42%, rgba(0, 0, 0, .38) 100%);
+}
+html[data-fx="on"]::after {
+  content: ""; position: fixed; inset: -50%; z-index: 0; pointer-events: none;
+  opacity: .32; mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grainShift 8s steps(6) infinite;
+}
+[data-theme="dark"] html[data-fx="on"]::after { opacity: .22; }
+@keyframes grainShift {
+  0% { transform: translate(0, 0); }
+  20% { transform: translate(-2%, 1%); }
+  40% { transform: translate(1%, -2%); }
+  60% { transform: translate(-1%, 2%); }
+  80% { transform: translate(2%, -1%); }
+  100% { transform: translate(0, 0); }
+}
+
+/* ---- 2. 玻璃卡片：内高光 + 双层投影 ---- */
+.card, .stat-card, .qcard, .hero, .exam-config, .list-card {
+  backdrop-filter: blur(14px) saturate(150%);
+  -webkit-backdrop-filter: blur(14px) saturate(150%);
+}
+.card, .stat-card, .list-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .55),
+    0 1px 2px rgba(16, 24, 64, .04),
+    0 14px 34px -18px rgba(16, 24, 64, .18);
+}
+[data-theme="dark"] .card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .list-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .06),
+    0 1px 2px rgba(0, 0, 0, .4),
+    0 18px 40px -20px rgba(0, 0, 0, .7);
+}
+
+/* ---- 3. 首屏 hero ---- */
+.hero {
+  border-radius: 30px;
+  padding: 44px 46px 40px;
+  gap: 40px;
+  background:
+    radial-gradient(110% 160% at 100% -20%, rgba(34, 211, 238, .16), transparent 52%),
+    radial-gradient(110% 160% at -10% 120%, rgba(139, 92, 246, .18), transparent 55%),
+    radial-gradient(70% 100% at 50% 0%, rgba(255, 255, 255, .5), transparent 70%),
+    var(--surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .75),
+    0 1px 2px rgba(16, 24, 64, .04),
+    0 30px 60px -34px rgba(63, 61, 180, .45);
+  isolation: isolate;
+}
+[data-theme="dark"] .hero {
+  background:
+    radial-gradient(110% 160% at 100% -20%, rgba(34, 211, 238, .14), transparent 52%),
+    radial-gradient(110% 160% at -10% 120%, rgba(139, 92, 246, .2), transparent 55%),
+    radial-gradient(70% 100% at 50% 0%, rgba(255, 255, 255, .06), transparent 70%),
+    var(--surface);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .08),
+    0 30px 70px -36px rgba(0, 0, 0, .9);
+}
+/* 顶部的流动光带 */
+.hero::after {
+  content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(99, 102, 241, .7), rgba(34, 211, 238, .6), transparent);
+  opacity: .8;
+}
+
+.hero-kicker {
+  font-size: 12.5px; padding: 5px 13px; margin-bottom: 18px;
+  background: color-mix(in srgb, var(--accent-soft) 70%, #fff 30%);
+  backdrop-filter: blur(8px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6);
+}
+[data-theme="dark"] .hero-kicker {
+  background: rgba(129, 140, 248, .16);
+  color: #c7cbff;
+  border-color: rgba(129, 140, 248, .3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+}
+
+.hero h1 {
+  font-size: 40px; line-height: 1.2; letter-spacing: -.035em; font-weight: 750;
+  margin-bottom: 14px;
+  background: linear-gradient(105deg, var(--text) 12%, var(--text) 46%, var(--accent) 82%, var(--accent-3) 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  text-wrap: balance;
+}
+.hero-desc {
+  font-size: 14.5px; color: var(--text-2); letter-spacing: .002em;
+  max-width: 46ch;
+}
+.hero-actions { margin-top: 26px; gap: 12px; }
+
+/* 环形进度再精修 */
+.hero-ring { width: 156px; height: 156px; }
+
+.ring-bg { stroke-width: 7; opacity: .75; }
+.ring-fg { stroke-width: 7; filter: drop-shadow(0 0 10px rgba(99, 102, 241, .45)); }
+.ring-label b { font-size: 30px; font-weight: 700; }
+
+/* ---- 4. 文字质感 ---- */
+h1, h2, h3 { text-wrap: balance; }
+.card-head h2, .page-head h1 { letter-spacing: -.026em; }
+.card-head h2 { font-weight: 700; }
+.stat-value { letter-spacing: -.03em; font-weight: 700; }
+.muted.small, .small { letter-spacing: .004em; }
+
+/* 按钮：内高光 */
+.btn-primary {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .35),
+    0 10px 24px -12px rgba(91, 84, 240, .75);
+}
+.btn-primary:hover {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .4),
+    0 16px 34px -14px rgba(91, 84, 240, .8);
+}
+
+/* 顶栏：更薄的玻璃 */
+.topbar {
+  backdrop-filter: saturate(200%) blur(22px);
+  -webkit-backdrop-filter: saturate(200%) blur(22px);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .5), 0 10px 30px -26px rgba(16, 24, 64, .5);
+}
+[data-theme="dark"] .topbar {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .05), 0 10px 30px -22px rgba(0, 0, 0, .8);
+}
+
+@media (max-width: 780px) {
+  .hero { padding: 28px 24px 26px; border-radius: 24px; gap: 20px; }
+  .hero h1 { font-size: 28px; }
+  .hero-desc { font-size: 13.5px; }
+  .hero-ring { width: 112px; height: 112px; }
+  .ring-label b { font-size: 22px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html::after { animation: none; }
+}
+/* 首屏精修 v2 */
+[data-theme="light"] .hero {
+  background:
+    radial-gradient(120% 170% at 104% -30%, rgba(34, 211, 238, .2), transparent 50%),
+    radial-gradient(120% 170% at -8% 130%, rgba(139, 92, 246, .18), transparent 52%),
+    radial-gradient(80% 120% at 30% -40%, rgba(255, 255, 255, .7), transparent 62%),
+    rgba(255, 255, 255, .5);
+}
+[data-theme="light"] .hero h1 {
+  background: linear-gradient(104deg, #1b1f3b 8%, #2a2f5c 40%, #5b54f0 78%, #22b8d8 100%);
+  -webkit-background-clip: text; background-clip: text;
+}
+[data-theme="dark"] .hero h1 {
+  background: linear-gradient(104deg, #f4f5ff 6%, #dfe2ff 42%, #a5aaff 76%, #6ee7f5 100%);
+  -webkit-background-clip: text; background-clip: text;
+}
+/* 首屏底部一条极淡的暗角，增加纵深 */
+.hero > * { position: relative; z-index: 1; }
+.hero::after { z-index: 0; }
+/* =============================================================
+   质感 v3：真玻璃 / 纵深 / 层级
+   ============================================================= */
+
+/* ---- 1. 浅色：底色压深一点，卡片改成半透明，玻璃才「透」得出来 ---- */
+[data-theme="light"] {
+  --bg: #e7ebf6;
+  --surface: rgba(255, 255, 255, .66);
+  --surface-2: rgba(255, 255, 255, .72);
+  --line: rgba(18, 26, 66, .10);
+  --line-2: rgba(18, 26, 66, .055);
+}
+[data-theme="dark"] {
+  --surface: rgba(255, 255, 255, .05);
+}
+
+/* ---- 2. 背景：点阵只留在首屏附近，往下化开 ---- */
+body {
+  background-image:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0) 0 32%, var(--bg) 92%),
+    radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0);
+  background-size: auto, 22px 22px;
+  background-attachment: fixed, fixed;
+  background-color: var(--bg);
+}
+
+/* 极光随滚动轻微位移，制造前后层视差 */
+body::before { top: calc(-22vw + var(--bg-shift, 0px)); }
+body::after { bottom: calc(-22vw - var(--bg-shift, 0px)); }
+
+/* 顶栏下沿的一道光 */
+.topbar { position: sticky; }
+.topbar::after {
+  content: ""; position: absolute; left: 0; right: 0; bottom: -1px; height: 1px;
+  background: linear-gradient(90deg, transparent 4%, rgba(99, 102, 241, .55) 32%, rgba(34, 211, 238, .5) 62%, transparent 96%);
+  opacity: .75; pointer-events: none;
+}
+
+/* ---- 3. 层级：L1 首屏 / L2 卡片 / L3 内嵌块 ---- */
+/* L1 */
+.hero {
+  backdrop-filter: blur(28px) saturate(165%);
+  -webkit-backdrop-filter: blur(28px) saturate(165%);
+}
+/* L2 */
+.card, .stat-card, .list-card, .qcard, .exam-config, .result-hero {
+  backdrop-filter: blur(20px) saturate(155%);
+  -webkit-backdrop-filter: blur(20px) saturate(155%);
+}
+/* L2 的边缘更实一点，玻璃才有厚度 */
+[data-theme="light"] .card,
+[data-theme="light"] .stat-card,
+[data-theme="light"] .list-card {
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, .9),
+    inset 0 0 0 1px rgba(255, 255, 255, .35),
+    0 1px 2px rgba(16, 24, 64, .05),
+    0 18px 40px -22px rgba(16, 24, 64, .28);
+}
+/* L3：卡片内部的块不做玻璃，保证密度和可读性 */
+.set-row, .qrow, .ec-col, .opt, .filter-panel, .review-item, .stat-row .stat-card .stat-value {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* 输入类控件保持实底，避免文字压在花背景上 */
+.essay-input, .input, select.input, textarea.input {
+  background-color: var(--surface-solid, #fff);
+}
+[data-theme="light"] .essay-input,
+[data-theme="light"] .input {
+  background-color: rgba(255, 255, 255, .88);
+}
+[data-theme="dark"] .essay-input,
+[data-theme="dark"] .input {
+  background-color: rgba(255, 255, 255, .06);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before, body::after { transition: none; }
+}
+/* =============================================================
+   质感 v4：章节配色 / 首屏仪表 / 留白节奏
+   ============================================================= */
+
+/* ---- ⑤ 章节色彩编码 ---- */
+.ch-dot {
+  display: inline-block; width: 7px; height: 7px; border-radius: 50%;
+  background: var(--ch, var(--accent));
+  margin-right: 8px; vertical-align: 1px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ch, var(--accent)) 16%, transparent);
+}
+.chapter-row .bar > i,
+.ct-row .bar > i { box-shadow: 0 0 10px -2px var(--ch, transparent); }
+.cr-name, .ct-name { display: flex; align-items: center; }
+
+/* ---- ④ 首屏仪表盘：外圈刻度 ---- */
+.hero-ring::before {
+  content: ""; position: absolute; inset: -16px; border-radius: 50%;
+  background: repeating-conic-gradient(from 0deg,
+    color-mix(in srgb, var(--accent) 42%, transparent) 0deg 1.1deg,
+    transparent 1.1deg 15deg);
+  -webkit-mask: radial-gradient(circle, transparent 0 63%, #000 63.5%, #000 65%, transparent 65.5%);
+  mask: radial-gradient(circle, transparent 0 63%, #000 63.5%, #000 65%, transparent 65.5%);
+  opacity: .55;
+  animation: ringSpin 90s linear infinite;
+  pointer-events: none;
+}
+/* 再外一圈极淡的轨道 */
+.hero-ring::after {
+  content: ""; position: absolute; inset: -30px; border-radius: 50%;
+  border: 1px solid color-mix(in srgb, var(--accent) 12%, transparent);
+  pointer-events: none;
+}
+@keyframes ringSpin { to { transform: rotate(360deg); } }
+
+/* ---- ⑥ 留白节奏 ---- */
+.page { gap: 22px; padding: 32px 24px 84px; }
+.card { padding: 22px 26px; }
+.hero + .stat-row { margin-top: 2px; }
+.page-head { margin-bottom: 4px; }
+.card-head { margin-bottom: 16px; }
+.set-row { padding: 16px 0; }
+
+@media (max-width: 780px) {
+  .page { gap: 18px; padding: 20px 16px 92px; }
+  .card { padding: 18px 18px; }
+  .hero-ring::before { inset: -10px; }
+  .hero-ring::after { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hero-ring::before { animation: none; }
+}

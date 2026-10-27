@@ -18,6 +18,7 @@
     theme: 'light',
     autoNext: true,
     chem: true,
+    grain: true,
     shuffleOptions: false,
     fontScale: 1,
     lastChapter: ''
